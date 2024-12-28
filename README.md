@@ -1,2 +1,1 @@
-# rmus
-Music tracker in C
+# C Tracker
