@@ -22,13 +22,18 @@ typedef struct Note {
 typedef struct Sheet {
 	int ncount;
 	Note notes[NOTES_MAX];
-};
+} Sheet;
 
 typedef struct PbState {
 	int frame;
 	float bpm;
 	Sheet sheet[SHEETS_MAX];
 } PbState;
+
+void PbInit(PbState* pbstate) {
+	pbstate->bpm = 120;
+	pbstate->frame = 0;
+}
 
 void data_callback(
 	ma_device* pDevice,
@@ -49,17 +54,11 @@ void data_callback(
 		//value += sin(2 * M_PI * ps->sheet[beat%16].freq * sec) * ps->sheet[beat%16].vol;
 		output[i*2+0] = value;
 		output[i*2+1] = value;
-;
 	}
 }
 
-int main(int argc, char** argv)
+void MAInit(ma_device* device, PbState* pbstate)
 {
-	PbState pbstate;
-	pbstate.bpm = 120;
-	pbstate.frame = 0;
-
-    ma_device device;
     ma_device_config deviceConfig;
 
     deviceConfig = ma_device_config_init(ma_device_type_playback);
@@ -70,18 +69,26 @@ int main(int argc, char** argv)
     deviceConfig.dataCallback      = data_callback;
     deviceConfig.pUserData         = &pbstate;
 
-    if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
+    if (ma_device_init(NULL, &deviceConfig, device) != MA_SUCCESS) {
         printf("Failed to open playback device.\n");
-        return -4;
+        exit(-4);
     }
 
-    printf("Device Name: %s\n", device.playback.name);
+    //printf("Device Name: %s\n", device.playback.name);
 
-    if (ma_device_start(&device) != MA_SUCCESS) {
+    if (ma_device_start(device) != MA_SUCCESS) {
         printf("Failed to start playback device.\n");
-        ma_device_uninit(&device);
-        return -5;
+        ma_device_uninit(device);
+        exit(-5);
     }
+}
+
+int main(int argc, char** argv) {
+	PbState pbstate;
+	PbInit(&pbstate);
+
+    ma_device device;
+	MAInit(&device, &pbstate);
 
     while (1)
 	{

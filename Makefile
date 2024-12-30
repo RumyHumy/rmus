@@ -6,6 +6,8 @@ all: rmus.c
 	$(BINARY)
 	rm $(BINARY)
 
+install: libma all
+
 libma:
 	gcc -c miniaudio.c -o $(LIBMA).o
 	ar rcs $(LIBMA).a $(LIBMA).o
