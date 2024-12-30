@@ -2,33 +2,21 @@
 #define MA_NO_ENCODING
 
 #include "miniaudio.h"
+#include <ncurses.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
 #define DEVICE_FORMAT       ma_format_f32
 #define DEVICE_CHANNELS     2
 #define DEVICE_SAMPLE_RATE  44100
 
-#define NOTES_MAX 255
-#define SHEETS_MAX 1024
+#define MAX_FCOUNT 255
 
-typedef struct Note {
-	float vol;
-	float freq;
-} Note;
-
-typedef struct Sheet {
-	int ncount;
-	Note notes[NOTES_MAX];
-};
-
-typedef struct PbState {
+typedef struct State {
 	int frame;
-	float bpm;
-	Sheet sheet[SHEETS_MAX];
-} PbState;
+	float freq;
+} State;
 
 void data_callback(
 	ma_device* pDevice,
@@ -36,7 +24,7 @@ void data_callback(
 	const void* pInput,
 	ma_uint32 frameCount)
 {
-	PbState *ps = (PbState*)pDevice->pUserData;
+	State *ps = (State*)pDevice->pUserData;
 
 	float *output = (float*)pOutput;
 
@@ -44,9 +32,8 @@ void data_callback(
 	{
 		ps->frame++;
 		float sec = (float)ps->frame / DEVICE_SAMPLE_RATE;
-		int beat = (int)(fmod(sec, 60)*ps->bpm/60);
-		float value = (float)rand()/RAND_MAX/5;
-		//value += sin(2 * M_PI * ps->sheet[beat%16].freq * sec) * ps->sheet[beat%16].vol;
+		float value = 0;
+		value += sin(2 * M_PI * ps->freq * sec);
 		output[i*2+0] = value;
 		output[i*2+1] = value;
 ;
@@ -55,9 +42,9 @@ void data_callback(
 
 int main(int argc, char** argv)
 {
-	PbState pbstate;
-	pbstate.bpm = 120;
-	pbstate.frame = 0;
+	State state;
+	state.frame = 0;
+	state.freq = 0;
 
     ma_device device;
     ma_device_config deviceConfig;
@@ -68,7 +55,7 @@ int main(int argc, char** argv)
     deviceConfig.playback.channels = DEVICE_CHANNELS;
     deviceConfig.sampleRate        = DEVICE_SAMPLE_RATE;
     deviceConfig.dataCallback      = data_callback;
-    deviceConfig.pUserData         = &pbstate;
+    deviceConfig.pUserData         = &state;
 
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
         printf("Failed to open playback device.\n");
@@ -83,9 +70,31 @@ int main(int argc, char** argv)
         return -5;
     }
 
+	initscr();
+	timeout(-1);
+	float nfreq[13];
+	for (int i = 0; i < 13; i++)
+		nfreq[i] = 220.0f*pow(2, (float)i/12);
     while (1)
 	{
+		int c = getch();
+		switch (c) {
+		case 's': state.freq = nfreq[0]; break;
+		case 'e': state.freq = nfreq[1]; break;
+		case 'd': state.freq = nfreq[2]; break;
+		case 'r': state.freq = nfreq[3]; break;
+		case 'f': state.freq = nfreq[4]; break;
+		case 'g': state.freq = nfreq[5]; break;
+		case 'y': state.freq = nfreq[6]; break;
+		case 'h': state.freq = nfreq[7]; break;
+		case 'u': state.freq = nfreq[8]; break;
+		case 'j': state.freq = nfreq[9]; break;
+		case 'i': state.freq = nfreq[10]; break;
+		case 'k': state.freq = nfreq[11]; break;
+		case 'l': state.freq = nfreq[12]; break;
+		}
 	}
+	endwin();
 
     ma_device_uninit(&device);
     
