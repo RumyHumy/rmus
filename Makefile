@@ -4,7 +4,7 @@ LIBMA=./build/libma
 rmus: rmus.c
 	gcc rmus.c -o $(BINARY) -lm $(LIBMA).a
 
-install: libma all
+install: libma rmus
 
 libma:
 	gcc -c miniaudio.c -o $(LIBMA).o
