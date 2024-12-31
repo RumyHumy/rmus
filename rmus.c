@@ -6,33 +6,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#define M_PI 3.14159265358979323846
 
 #define DEVICE_FORMAT       ma_format_f32
 #define DEVICE_CHANNELS     2
 #define DEVICE_SAMPLE_RATE  44100
 
-#define NOTES_MAX 255
-#define SHEETS_MAX 1024
+// Prerender
+#define PR_FREQ    10
+#define PR_SAMPLES (DEVICE_SAMPLE_RATE/PR_FREQ)
 
-typedef struct Note {
-	float vol;
-	float freq;
-} Note;
-
-typedef struct Sheet {
-	int ncount;
-	Note notes[NOTES_MAX];
-} Sheet;
+#define BEATS_MAX 1000000
 
 typedef struct PbState {
 	int frame;
 	float bpm;
-	Sheet sheet[SHEETS_MAX];
+	// Prerender
+	float phase; // [0, 1]
+	float pre_sine[PR_SAMPLES];
 } PbState;
 
 void PbInit(PbState* pbstate) {
 	pbstate->bpm = 120;
 	pbstate->frame = 0;
+	pbstate->phase = 0;
+	for (int i = 0; i < PR_SAMPLES; i++) {
+		float phase = (float)i/PR_SAMPLES;
+		pbstate->pre_sine[i] = sin(2*M_PI*phase);
+	}
 }
 
 void data_callback(
@@ -50,10 +51,15 @@ void data_callback(
 		ps->frame++;
 		float sec = (float)ps->frame / DEVICE_SAMPLE_RATE;
 		int beat = (int)(fmod(sec, 60)*ps->bpm/60);
-		float value = (float)rand()/RAND_MAX/5;
+		float value = 0.0;
 		//value += sin(2 * M_PI * ps->sheet[beat%16].freq * sec) * ps->sheet[beat%16].vol;
+		value += ps->pre_sine[(int)(ps->phase*PR_SAMPLES)];
+		printf("%f\n", value);
 		output[i*2+0] = value;
 		output[i*2+1] = value;
+		ps->phase += 440.0*(1.0/DEVICE_SAMPLE_RATE);
+		if (ps->phase >= 1.0)
+			ps->phase = 0.0;
 	}
 }
 
@@ -67,7 +73,7 @@ void MAInit(ma_device* device, PbState* pbstate)
     deviceConfig.playback.channels = DEVICE_CHANNELS;
     deviceConfig.sampleRate        = DEVICE_SAMPLE_RATE;
     deviceConfig.dataCallback      = data_callback;
-    deviceConfig.pUserData         = &pbstate;
+    deviceConfig.pUserData         = pbstate;
 
     if (ma_device_init(NULL, &deviceConfig, device) != MA_SUCCESS) {
         printf("Failed to open playback device.\n");
