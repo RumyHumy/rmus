@@ -166,6 +166,7 @@ void LoadSong(char* fname, Song* song) {
 	char **toks = DataTokenize(data);
 	for (char** tok = toks; *tok; tok++) {
 		printf("%d: '%s'\n", *tok, *tok);
+		
 	}
 
 	free(data);
